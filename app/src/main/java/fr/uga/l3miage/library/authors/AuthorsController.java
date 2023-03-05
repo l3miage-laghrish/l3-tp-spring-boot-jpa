@@ -114,28 +114,6 @@ public class AuthorsController {
 
     //////////////////////////////////////////////////////
 
-    /*
-     * @PutMapping("/authors/{id}")
-     * 
-     * @ResponseStatus(HttpStatus.OK)
-     * public AuthorDTO updateAuthor(@RequestBody AuthorDTO
-     * author, @PathVariable("id") Long id) {
-     * // attention AuthorDTO.id() doit être égale à id, sinon la requête
-     * utilisateur
-     * // est mauvaise
-     * Author updAuthor;
-     * try {
-     * updAuthor = authorService.update(authorMapper.dtoToEntity(author));
-     * return authorMapper.entityToDTO(updAuthor);
-     * 
-     * } catch (EntityNotFoundException e) {
-     * throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-     * } catch (IllegalArgumentException e) {
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-     * }
-     * }
-     */
-
     @PutMapping("/authors/{id}")
     @ResponseStatus(HttpStatus.OK)
     public AuthorDTO updateAuthor(@RequestBody AuthorDTO author, @PathVariable("id") Long id) {

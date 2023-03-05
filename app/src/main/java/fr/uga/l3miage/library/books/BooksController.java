@@ -9,11 +9,13 @@ import fr.uga.l3miage.library.service.AuthorService;
 import fr.uga.l3miage.library.service.BookService;
 import fr.uga.l3miage.library.service.EntityNotFoundException;
 import jakarta.annotation.Resource;
+import jakarta.persistence.EntityExistsException;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.PublicKey;
+import java.time.YearMonth;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -64,6 +67,8 @@ public class BooksController {
                 .toList();
     }
 
+    //////////////////////////////////////////////////////////
+
     @GetMapping("/books/{id}")
     @ResponseStatus(HttpStatus.OK)
     public BookDTO book(@PathVariable("id") Long id) {
@@ -84,131 +89,45 @@ public class BooksController {
         return booksMapper.entityToDTO(book);
     }
 
-    /*
-     * @PostMapping("/authors/{id}/books")
-     * 
-     * @ResponseStatus(HttpStatus.CREATED)
-     * public BookDTO newBook(@PathVariable("id") Long authorId, @Valid @RequestBody
-     * BookDTO book) {
-     * 
-     * Book newBook = new Book();
-     * newBook.setId(authorId);
-     * 
-     * try {
-     * Author author = authorService.get(authorId);
-     * 
-     * // Vérifier que le titre n'est pas null ou vide
-     * if (newBook.getTitle() == null || newBook.getTitle().isEmpty()) {
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-     * "Le titre ne peut pas être null ou vide.");
-     * }
-     * newBook.setTitle(book.title());
-     * 
-     * // Vérifier que l'ISBN contient exactement 13 chiffres
-     * String isbn = Long.toString(book.isbn());
-     * if (isbn.length() != 13) {
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-     * "L'ISBN doit contenir exactement 13 chiffres.");
-     * }
-     * newBook.setIsbn(book.isbn());
-     * 
-     * newBook.setPublisher(book.publisher());
-     * 
-     * // Vérifier que l'année est valide
-     * String year = Short.toString(book.year());
-     * if (year != null && !year.matches("\\d{4}")) {
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Année invalide.");
-     * }
-     * newBook.setYear(book.year());
-     * 
-     * // Validation du champ language
-     * if (book.language() != null) {
-     * String language = book.language().toLowerCase();
-     * if (!language.equals("english") && !language.equals("french")) {
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-     * "Langage invalide.");
-     * }
-     * if (language.equals("english")) {
-     * newBook.setLanguage(Language.ENGLISH);
-     * } else {
-     * newBook.setLanguage(Language.FRENCH);
-     * }
-     * }
-     * 
-     * newBook.addAuthor(author);
-     * bookService.save(authorId, newBook);
-     * 
-     * } catch (EntityNotFoundException e) {
-     * throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-     * }
-     * // Convertir le livre en DTO et le retourner
-     * return booksMapper.entityToDTO(newBook);
-     * }
-     */
+    /////////////////////////////////////////////////////////////
 
-    @PostMapping("/authors/{id}/books")
-
+    @PostMapping("/authors/{authorId}/books")
     @ResponseStatus(HttpStatus.CREATED)
-    public BookDTO newBook(@PathVariable("id") Long authorId, @Valid @RequestBody BookDTO book) {
+    public BookDTO newBook(@PathVariable Long authorId, @RequestBody BookDTO book) {
+
+        Book newBook = booksMapper.dtoToEntity(book); // transformer le livre du DTO à entity
 
         try {
-
-            Book newBook = booksMapper.dtoToEntity(book);
-            // Collection<Author> newAuthor = authorMapper.dtoToEntity(book.authors());
-            Author author = authorService.get(authorId);
-            if (author == null) {
-                authorService.save(author);
-            }
-            // Vérifier que le titre n'est pas null ou vide
-            if (book.title() == null || book.title().isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Le titre ne peut pas être null ou vide.");
-            }
-            newBook.setTitle(book.title());
-
-            // Vérifier que l'ISBN contient exactement 13 chiffres
-            String isbn = Long.toString(book.isbn());
-            if (isbn.length() != 13) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "L'ISBN doit contenir exactement 13 chiffres.");
-            }
-            newBook.setIsbn(book.isbn());
-
-            newBook.setPublisher(book.publisher());
-
-            // Vérifier que l'année est valide
-            String year = Short.toString(book.year());
-            if (year != null && !year.matches("\\d{4}")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Année invalide.");
-            }
-            newBook.setYear(book.year());
-
-            // Validation du champ language
-            if (book.language() != null) {
-                String language = book.language().toLowerCase();
-                if (!language.equals("english") && !language.equals("french")) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Langage invalide.");
-                }
-                if (language.equals("english")) {
-                    newBook.setLanguage(Language.ENGLISH);
-                } else {
-                    newBook.setLanguage(Language.FRENCH);
-                }
-            } else {
-                newBook.setLanguage(Language.FRENCH);
+            if (newBook.getTitle() == null) {
+                throw new Exception("Le titre n'est pas valide.");
             }
 
-            newBook.addAuthor(author);
+            else if (newBook.getLanguage() != Language.ENGLISH
+                    && newBook.getLanguage() != Language.FRENCH) {
+                throw new Exception("Le langage n'est pas valide.");
+            }
+
+            // vérification du numéro Isbn
+            else if (String.valueOf(newBook.getIsbn()).length() < 10) {
+                throw new Exception("Le numéro Isbn n'est pas valide.");
+            }
+            // vérifier si l'année est dans le bon format (4 chiffres)
+            else if (String.valueOf(newBook.getYear()).length() != 4) {
+                throw new Exception("L'année n'est pas valide.");
+            }
+            Author author = authorService.get(authorId); //
+            newBook.addAuthor(author); // on ajoute l'auteur au book
             bookService.save(authorId, newBook);
 
-            // Convertir le livre en DTO et le retourner
             return booksMapper.entityToDTO(newBook);
-
-        } catch (EntityNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Auteur non trouvé");
+        } catch (EntityNotFoundException e) { // Si l'auteur n'est pas trouvé erreur 404
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "the author was not found", e);
+        } catch (Exception f) { // 400
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
     }
+
+    /////////////////////////////////////////////////////////
 
     @PutMapping("/books/{id}")
     public BookDTO updateBook(@RequestBody BookDTO book, @PathVariable("id") Long id) {
@@ -236,7 +155,11 @@ public class BooksController {
         return booksMapper.entityToDTO(bBd);
     }
 
-    public void deleteBook(Long id) {
+    ////////////////////////////////////////////////////////////
+
+    @DeleteMapping("/books/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBook(@PathVariable("id") Long id) {
 
         try {
             // Si l'auteur partage l'autorité sur un livre, renvoyer une erreur 400
@@ -247,7 +170,23 @@ public class BooksController {
         }
     }
 
-    public void addAuthor(Long authorId, AuthorDTO author) {
+    //////////////////////////////////////////////////////////////////
 
+    @PutMapping("/books/{id}/authors")
+    @ResponseStatus(HttpStatus.OK)
+    public BookDTO addAuthor(@PathVariable("id") Long bookId, @RequestBody AuthorDTO author) {
+
+        try {
+            Author a = authorService.get(author.id());
+            if (a == null) {
+                Author a2 = authorMapper.dtoToEntity(author);
+                a = authorService.save(a2);
+            }
+            Book livre = bookService.get(bookId);
+            bookService.save(a.getId(), livre);
+            return this.booksMapper.entityToDTO(livre);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
     }
 }
